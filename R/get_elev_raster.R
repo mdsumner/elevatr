@@ -312,13 +312,34 @@ get_aws_terrain <- function(locations, z, prj, expand=NULL,
 #' @param method the method for resampling/reprojecting. Default is 'bilinear'. 
 #' Options can be found [here](https://gdal.org/programs/gdalwarp.html#cmdoption-gdalwarp-r)
 #' @param returnRaster if TRUE, return a raster object (default), else, return the file path to the object
-#' @param tmp_dir The location to store downloaded raster files.  Defaults to a 
-#'                temporary location.  Alternatively, the user may supply an 
-#'                existing path for these raster files.  New folders are not 
+#' @param tmp_dir The location to store downloaded raster files.  Defaults to a
+#'                temporary location.  Alternatively, the user may supply an
+#'                existing path for these raster files.  New folders are not
 #'                created by \code{get_elev_raster}.
 #' @export
 #' @keywords internal
-          
+#' @examples
+#' \dontrun{
+#' # The lake dataset straddles four AWS terrain tiles at zoom level 10.
+#' # Download the four tiles and merge them into a single raster in the
+#' # projection of the lake data.
+#' library(elevatr)
+#' library(sf)
+#' data(lake)
+#'
+#' base_url <- "https://s3.amazonaws.com/elevation-tiles-prod/geotiff"
+#' tiles <- expand.grid(x = 306:307, y = 374:375)
+#' urls  <- sprintf("%s/10/%s/%s.tif", base_url, tiles$x, tiles$y)
+#' files <- file.path(tempdir(), sprintf("tile_%s_%s.tif", tiles$x, tiles$y))
+#' for(i in seq_along(urls)){
+#'   download.file(urls[i], files[i], mode = "wb", quiet = TRUE)
+#' }
+#'
+#' lake_dem <- merge_rasters(files, target_prj = st_crs(lake))
+#' terra::plot(lake_dem)
+#' plot(st_geometry(lake), add = TRUE)
+#' }
+
 merge_rasters <- function(raster_list,  target_prj, method = "bilinear",
                           returnRaster = TRUE, tmp_dir = tempdir()){
 

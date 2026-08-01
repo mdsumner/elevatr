@@ -28,7 +28,29 @@ existing path for these raster files.  New folders are not
 created by \code{get_elev_raster}.}
 }
 \description{
-Merge multiple downloaded raster files into a single file. The input `target_prj` 
+Merge multiple downloaded raster files into a single file. The input `target_prj`
 describes the projection for the new grid.
+}
+\examples{
+\dontrun{
+# The lake dataset straddles four AWS terrain tiles at zoom level 10.
+# Download the four tiles and merge them into a single raster in the
+# projection of the lake data.
+library(elevatr)
+library(sf)
+data(lake)
+
+base_url <- "https://s3.amazonaws.com/elevation-tiles-prod/geotiff"
+tiles <- expand.grid(x = 306:307, y = 374:375)
+urls  <- sprintf("\%s/10/\%s/\%s.tif", base_url, tiles$x, tiles$y)
+files <- file.path(tempdir(), sprintf("tile_\%s_\%s.tif", tiles$x, tiles$y))
+for(i in seq_along(urls)){
+  download.file(urls[i], files[i], mode = "wb", quiet = TRUE)
+}
+
+lake_dem <- merge_rasters(files, target_prj = st_crs(lake))
+terra::plot(lake_dem)
+plot(st_geometry(lake), add = TRUE)
+}
 }
 \keyword{internal}
