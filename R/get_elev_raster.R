@@ -319,38 +319,44 @@ get_aws_terrain <- function(locations, z, prj, expand=NULL,
 #' @export
 #' @keywords internal
           
-merge_rasters <- function(raster_list,  target_prj, method = "bilinear", 
+merge_rasters <- function(raster_list,  target_prj, method = "bilinear",
                           returnRaster = TRUE, tmp_dir = tempdir()){
-  
+
   message(paste("Mosaicing & Projecting"))
-  
-  destfile <- tempfile(tmpdir = tmp_dir, fileext = ".tif")
+
   files    <- unlist(raster_list)
- 
+
   if(is.null(target_prj)){
     r <- terra::rast(files[1])
     target_prj <- terra::crs(r)
   }
-  
-  sf::gdal_utils(util = "warp", 
-                 source = files, 
+
+  # Mosaic the tiles as a VRT (a lightweight XML index, no pixel I/O), then
+  # warp once.  Warping the tiles as separate sources introduced NA's and
+  # resampling artifacts along the tile seams, because each source is warped
+  # independently and the resampling kernel is truncated at every tile edge.
+  # The previous workaround was a second full-resolution warp pass; the VRT
+  # gives the warper one contiguous dataset, which fixes the seams exactly
+  # and skips a full-resolution write and re-read of the mosaic.
+  vrtfile  <- tempfile(tmpdir = tmp_dir, fileext = ".vrt")
+  destfile <- tempfile(tmpdir = tmp_dir, fileext = ".tif")
+
+  sf::gdal_utils(util = "buildvrt",
+                 source = files,
+                 destination = vrtfile
+  )
+
+  sf::gdal_utils(util = "warp",
+                 source = vrtfile,
                  destination = destfile,
-                 options = c("-r", method)
-             )
-  # Using two steps now as gdal with one step introduced NA's along seams
-  # Slower but more accurate!
-  destfile2 <- tempfile(tmpdir = tmp_dir, fileext = ".tif")
-  sf::gdal_utils(util = "warp", 
-                 source = destfile, 
-                 destination = destfile2,
                  options = c("-r", method,
                    "-t_srs", sf::st_crs(target_prj)$wkt)
   )
-  
+
   if(returnRaster){
-    terra::rast(destfile2)
+    terra::rast(destfile)
   } else {
-    destfile2
+    destfile
   }
 }
 
