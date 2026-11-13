@@ -1,0 +1,101 @@
+From 1244bc41ca064b9a403b8a886807a3d6d44d5e7e Mon Sep 17 00:00:00 2001
+From: Michael Sumner <mdsumner@gmail.com>
+Date: Sat, 1 Aug 2026 01:29:54 +0000
+Subject: [PATCH 2/2] Add example to merge_rasters documentation
+
+Downloads the four AWS terrain tiles that the lake dataset straddles at
+zoom 10 and merges them into the lake's projection. merge_rasters had no
+example previously. Wrapped in dontrun as it requires network access.
+
+The Rd file is hand-synced with the roxygen block (matching roxygen2
+output including percent escaping) to keep the diff minimal; regenerate
+with devtools::document() if preferred.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Uv2gbyGQCqvw9GwtpTKscm
+---
+ R/get_elev_raster.R  | 29 +++++++++++++++++++++++++----
+ man/merge_rasters.Rd | 24 +++++++++++++++++++++++-
+ 2 files changed, 48 insertions(+), 5 deletions(-)
+
+diff --git a/R/get_elev_raster.R b/R/get_elev_raster.R
+index 35439a5..faf19b7 100644
+--- a/R/get_elev_raster.R
++++ b/R/get_elev_raster.R
+@@ -312,13 +312,34 @@ get_aws_terrain <- function(locations, z, prj, expand=NULL,
+ #' @param method the method for resampling/reprojecting. Default is 'bilinear'. 
+ #' Options can be found [here](https://gdal.org/programs/gdalwarp.html#cmdoption-gdalwarp-r)
+ #' @param returnRaster if TRUE, return a raster object (default), else, return the file path to the object
+-#' @param tmp_dir The location to store downloaded raster files.  Defaults to a 
+-#'                temporary location.  Alternatively, the user may supply an 
+-#'                existing path for these raster files.  New folders are not 
++#' @param tmp_dir The location to store downloaded raster files.  Defaults to a
++#'                temporary location.  Alternatively, the user may supply an
++#'                existing path for these raster files.  New folders are not
+ #'                created by \code{get_elev_raster}.
+ #' @export
+ #' @keywords internal
+-          
++#' @examples
++#' \dontrun{
++#' # The lake dataset straddles four AWS terrain tiles at zoom level 10.
++#' # Download the four tiles and merge them into a single raster in the
++#' # projection of the lake data.
++#' library(elevatr)
++#' library(sf)
++#' data(lake)
++#'
++#' base_url <- "https://s3.amazonaws.com/elevation-tiles-prod/geotiff"
++#' tiles <- expand.grid(x = 306:307, y = 374:375)
++#' urls  <- sprintf("%s/10/%s/%s.tif", base_url, tiles$x, tiles$y)
++#' files <- file.path(tempdir(), sprintf("tile_%s_%s.tif", tiles$x, tiles$y))
++#' for(i in seq_along(urls)){
++#'   download.file(urls[i], files[i], mode = "wb", quiet = TRUE)
++#' }
++#'
++#' lake_dem <- merge_rasters(files, target_prj = st_crs(lake))
++#' terra::plot(lake_dem)
++#' plot(st_geometry(lake), add = TRUE)
++#' }
++
+ merge_rasters <- function(raster_list,  target_prj, method = "bilinear",
+                           returnRaster = TRUE, tmp_dir = tempdir()){
+ 
+diff --git a/man/merge_rasters.Rd b/man/merge_rasters.Rd
+index 688d418..3f2579c 100644
+--- a/man/merge_rasters.Rd
++++ b/man/merge_rasters.Rd
+@@ -28,7 +28,29 @@ existing path for these raster files.  New folders are not
+ created by \code{get_elev_raster}.}
+ }
+ \description{
+-Merge multiple downloaded raster files into a single file. The input `target_prj` 
++Merge multiple downloaded raster files into a single file. The input `target_prj`
+ describes the projection for the new grid.
+ }
++\examples{
++\dontrun{
++# The lake dataset straddles four AWS terrain tiles at zoom level 10.
++# Download the four tiles and merge them into a single raster in the
++# projection of the lake data.
++library(elevatr)
++library(sf)
++data(lake)
++
++base_url <- "https://s3.amazonaws.com/elevation-tiles-prod/geotiff"
++tiles <- expand.grid(x = 306:307, y = 374:375)
++urls  <- sprintf("\%s/10/\%s/\%s.tif", base_url, tiles$x, tiles$y)
++files <- file.path(tempdir(), sprintf("tile_\%s_\%s.tif", tiles$x, tiles$y))
++for(i in seq_along(urls)){
++  download.file(urls[i], files[i], mode = "wb", quiet = TRUE)
++}
++
++lake_dem <- merge_rasters(files, target_prj = st_crs(lake))
++terra::plot(lake_dem)
++plot(st_geometry(lake), add = TRUE)
++}
++}
+ \keyword{internal}
+-- 
+2.43.0
+
